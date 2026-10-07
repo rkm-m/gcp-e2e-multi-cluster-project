@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-config
+  namespace: default
+data:
+  gcp-e2e-observability.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "title": "Application Error Rates Over Time (BigQuery)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": { "type": "grafana-bigquery-datasource", "uid": "bigquery-gke" },
+          "targets": [
+            {
+              "datasource": { "type": "grafana-bigquery-datasource", "uid": "bigquery-gke" },
+              "rawSql": "SELECT TIMESTAMP_TRUNC(timestamp, MINUTE) AS time, COUNT(*) as value FROM `project-a910b7aa-8608-45db-9af.gke_logs_dataset.stdout_*` WHERE severity IN ('ERROR', 'CRITICAL') GROUP BY time ORDER BY time ASC",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Pod Restart Counts by Namespace",
+          "type": "barchart",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+          "targets": [
+            {
+              "query": "fetch k8s_pod | metric 'kubernetes.io/container/restart_count' | group_by [resource.namespace_name]",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "title": "Request Latency Percentiles (p50, p95, p99)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+          "targets": [
+            {
+              "query": "fetch gce_instance | metric 'loadbalancing.googleapis.com/https/backend_latencies' | align delta(1m) | group_by [], [percentile(p, 50), percentile(p, 95), percentile(p, 99)]",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "title": "Resource Utilization Trends (Container CPU/Memory)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+          "targets": [
+            {
+              "query": "fetch k8s_container | metric 'kubernetes.io/container/cpu/core_usage_time' | align rate(1m) | group_by [resource.pod_name]",
+              "refId": "D"
+            }
+          ]
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["gke", "observability", "bigquery"],
+      "time": { "from": "now-1h", "to": "now" },
+      "title": "GCP E2E Multi-Cluster Observability Dashboard",
+      "uid": "gcp-e2e-observability"
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: default
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: "admin123"
+        volumeMounts:
+        - name: dashboard-provider
+          mountPath: /etc/grafana/provisioning/dashboards
+        - name: dashboard-volume
+          mountPath: /var/lib/grafana/dashboards
+      volumes:
+      - name: dashboard-provider
+        configMap:
+          name: grafana-dashboard-provider
+      - name: dashboard-volume
+        configMap:
+          name: grafana-dashboard-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    app: grafana

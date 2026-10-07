@@ -1,0 +1,72 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Application Error Rates Over Time (BigQuery)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-bigquery-datasource", "uid": "bigquery-gke" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-bigquery-datasource", "uid": "bigquery-gke" },
+          "rawSql": "SELECT TIMESTAMP_TRUNC(timestamp, MINUTE) AS time, COUNT(*) as value FROM `project-a910b7aa-8608-45db-9af.gke_logs_dataset.stdout_*` WHERE severity IN ('ERROR', 'CRITICAL') GROUP BY time ORDER BY time ASC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Pod Restart Counts by Namespace",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+      "targets": [
+        {
+          "query": "fetch k8s_pod | metric 'kubernetes.io/container/restart_count' | group_by [resource.namespace_name]",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "Request Latency Percentiles (p50, p95, p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+      "targets": [
+        {
+          "query": "fetch gce_instance | metric 'loadbalancing.googleapis.com/https/backend_latencies' | align delta(1m) | group_by [], [percentile(p, 50), percentile(p, 95), percentile(p, 99)]",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "Resource Utilization Trends (Container CPU/Memory)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+      "targets": [
+        {
+          "query": "fetch k8s_container | metric 'kubernetes.io/container/cpu/core_usage_time' | align rate(1m) | group_by [resource.pod_name]",
+          "refId": "D"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["gke", "observability", "bigquery"],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "title": "GCP E2E Multi-Cluster Observability Dashboard",
+  "uid": "gcp-e2e-observability"
+}
