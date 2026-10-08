@@ -1,6 +1,24 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: grafana-datasource-config
+  namespace: default
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: Google Cloud Monitoring
+      type: stackdriver
+      uid: stackdriver
+      isDefault: true
+      jsonData:
+        authenticationType: gce
+        defaultProject: project-a910b7aa-8608-45db-9af
+      editable: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-dashboard-config
   namespace: default
 data:
@@ -15,50 +33,53 @@ data:
       "liveNow": false,
       "panels": [
         {
-          "title": "Application Error Rates Over Time (BigQuery)",
+          "title": "Container CPU Request Utilization Rate",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-          "datasource": { "type": "grafana-bigquery-datasource", "uid": "bigquery-gke" },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
           "targets": [
             {
-              "datasource": { "type": "grafana-bigquery-datasource", "uid": "bigquery-gke" },
-              "rawSql": "SELECT TIMESTAMP_TRUNC(timestamp, MINUTE) AS time, COUNT(*) as value FROM `project-a910b7aa-8608-45db-9af.gke_logs_dataset.stdout_*` WHERE severity IN ('ERROR', 'CRITICAL') GROUP BY time ORDER BY time ASC",
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "kubernetes.io/container/cpu/request_utilization",
               "refId": "A"
             }
           ]
         },
         {
-          "title": "Pod Restart Counts by Namespace",
-          "type": "barchart",
+          "title": "Pod Memory Usage Bytes",
+          "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-          "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
           "targets": [
             {
-              "query": "fetch k8s_pod | metric 'kubernetes.io/container/restart_count' | group_by [resource.namespace_name]",
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "kubernetes.io/container/memory/used_bytes",
               "refId": "B"
             }
           ]
         },
         {
-          "title": "Request Latency Percentiles (p50, p95, p99)",
+          "title": "GKE Node CPU Allocatable Utilization",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-          "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
           "targets": [
             {
-              "query": "fetch gce_instance | metric 'loadbalancing.googleapis.com/https/backend_latencies' | align delta(1m) | group_by [], [percentile(p, 50), percentile(p, 95), percentile(p, 99)]",
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "kubernetes.io/node/cpu/allocatable_utilization",
               "refId": "C"
             }
           ]
         },
         {
-          "title": "Resource Utilization Trends (Container CPU/Memory)",
+          "title": "Log Entry Volume Over Time",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-          "datasource": { "type": "googlecloud-monitoring-datasource", "uid": "gcp-monitoring" },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
           "targets": [
             {
-              "query": "fetch k8s_container | metric 'kubernetes.io/container/cpu/core_usage_time' | align rate(1m) | group_by [resource.pod_name]",
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "logging.googleapis.com/log_entry_count",
               "refId": "D"
             }
           ]
@@ -67,10 +88,94 @@ data:
       "refresh": "10s",
       "schemaVersion": 38,
       "style": "dark",
-      "tags": ["gke", "observability", "bigquery"],
+      "tags": ["gke", "observability", "gcp"],
       "time": { "from": "now-1h", "to": "now" },
       "title": "GCP E2E Multi-Cluster Observability Dashboard",
       "uid": "gcp-e2e-observability"
+    }
+  gke-cluster-pod-status.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "title": "GKE Container Memory Active Replicas",
+          "type": "stat",
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "targets": [
+            {
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "kubernetes.io/container/memory/used_bytes",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "GKE Node CPU Utilization Status",
+          "type": "stat",
+          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "targets": [
+            {
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "kubernetes.io/node/cpu/allocatable_utilization",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "title": "Active Pod Memory Usage Trends",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "targets": [
+            {
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "kubernetes.io/container/memory/used_bytes",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "title": "Log Entry Volume Over Time",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "targets": [
+            {
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "logging.googleapis.com/log_entry_count",
+              "refId": "D"
+            }
+          ]
+        },
+        {
+          "title": "Cluster Node Network Received Traffic Bytes",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "targets": [
+            {
+              "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+              "metricType": "kubernetes.io/node/network/received_bytes_count",
+              "refId": "E"
+            }
+          ]
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["gke", "pods", "status", "cluster"],
+      "time": { "from": "now-1h", "to": "now" },
+      "title": "GKE Cluster & Pod Health Status Dashboard",
+      "uid": "gke-cluster-pod-status"
     }
 ---
 apiVersion: v1
@@ -117,11 +222,16 @@ spec:
         - name: GF_SECURITY_ADMIN_PASSWORD
           value: "admin123"
         volumeMounts:
+        - name: datasource-volume
+          mountPath: /etc/grafana/provisioning/datasources
         - name: dashboard-provider
           mountPath: /etc/grafana/provisioning/dashboards
         - name: dashboard-volume
           mountPath: /var/lib/grafana/dashboards
       volumes:
+      - name: datasource-volume
+        configMap:
+          name: grafana-datasource-config
       - name: dashboard-provider
         configMap:
           name: grafana-dashboard-provider

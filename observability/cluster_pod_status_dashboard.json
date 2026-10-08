@@ -1,0 +1,109 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Active Running Pods Count",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+      "targets": [
+        {
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "metricType": "kubernetes.io/pod/uptime",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "GKE Cluster Health Status",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+      "targets": [
+        {
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "metricType": "kubernetes.io/node/cpu/allocatable_utilization",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.8 },
+              { "color": "red", "value": 0.95 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "title": "Pod Uptime Trends (Cluster-wide Pod Health)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+      "targets": [
+        {
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "metricType": "kubernetes.io/pod/uptime",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "title": "Pod Container Status & Restart Counts",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+      "targets": [
+        {
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "metricType": "kubernetes.io/container/restart_count",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "title": "Cluster Node Network Traffic (Bytes In/Out)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+      "targets": [
+        {
+          "datasource": { "type": "stackdriver", "uid": "stackdriver" },
+          "metricType": "kubernetes.io/node/network/received_bytes_count",
+          "refId": "E"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["gke", "pods", "status", "cluster"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "GKE Cluster & Pod Health Status Dashboard",
+  "uid": "gke-cluster-pod-status"
+}
