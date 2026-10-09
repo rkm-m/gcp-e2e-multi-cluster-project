@@ -220,7 +220,10 @@ spec:
         - containerPort: 3000
         env:
         - name: GF_SECURITY_ADMIN_PASSWORD
-          value: "admin123"
+          valueFrom:
+            secretKeyRef:
+              name: grafana-admin-credentials
+              key: admin-password
         volumeMounts:
         - name: datasource-volume
           mountPath: /etc/grafana/provisioning/datasources
